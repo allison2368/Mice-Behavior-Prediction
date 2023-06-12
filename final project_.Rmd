@@ -1,0 +1,1717 @@
+---
+output: 
+  html_document:
+    css: bootstrap.css
+    df_print: paged
+    number_sections: yes
+    toc: true
+    toc_float: true 
+---
+
+```{r setup, include=FALSE, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse) 
+library(magrittr)   
+library(knitr) 
+library(dplyr)  
+library(ggplot2)
+library(plotly)
+library(viridisLite)
+library(gridExtra)
+library(patchwork)
+library(car)
+library(randomForest)
+# in library tidyverse
+library(tibble)
+library(knitr)
+```
+
+***
+# STA 141A Course Project - Analysis and Predictive Model on the Action and Engagement of the Mouse Brain
+
+Name: Allison Peng
+
+Date: 5/2/2023
+
+
+***
+
+## Abstract 
+
+Behavioral decisions can arise from a multitude of factors: sensory information, stimuli, reward, punishment. It is unknown which specific neuron activity in the brain pertains to action selection, however there are known correlations between specific brain areas and actions. Steinmetz explored these decisions in mice and their resulting neural activity. Using unsupervised learning and a subset of his results, similar neuron activity was explored to locate possible brain regions. A successful model was built with the resulting 4 brain regions to predict the behavioral decisions of the mice. With the model, a possible correlation between neuron activity in different brain regions and action selection emerged and is a hint to the conclusion of global neural correlates of action selection. 
+
+*** 
+## Introduction
+
+The introduction states the questions of interest and the impact of results of this data analysis. In addition, the introduction provides a brief overview of the problem setup, source of data, key variables, and possible hypotheses. 
+Readers that are familiar with this topic can easily understand the introduction. </span>
+
+Questions of interest: 
+
+1) How can I combine heterogeneous data to predict the behavior of mice?
+
+2) Is there a relationship between neuron activity and feedback type?
+
+3) What specific areas of the brain have similar neuron activity, and can I cluster them in groups to mimic brain regions?
+ 
+
+In my project, I will analyze the data published by Steinmetz et al, who conducted an experiment on mice behavior. 10 mice were used and 39 sessions of data was collected in total. I am using a subset of 18 sessions to analyze for this project. Two visual stimuli of differing contrast levels (0, 0.25, 0.50, 0.75, 1.00) were presented in front of a mouse, and a success is when the mouse turned a wheel in the direction of the lesser contrast. A failure is when it was turned in the opposite direction, and if both contrasts are 0, a success is if the wheel is held still. If both contrasts are equal but not 0, the left or right will be randomly chosen as a success. Within each session, there are a different amount of trials recording the neuron activities, the brain area for each neuron activity, success/failure, and the contrast of the left/right stimuli. The goal of this project is to inspect the different elements that affect this resulting behavior, and build a prediction model that takes in a decided predictor variable to predict a success or failure trial.  
+
+The high accuracy of the resulting prediction model is an indication of the relationship between neuron activity and mice behavior. The resulting model uses neuron data clustered into 4 brain regions, suggesting that neuron activity found in all explored brain areas have an effect on the resulting mice behavior. It is important to indicate that these results were stated in Steinmetz's publication, that neurons were found globally when action was observed in mice. Further discussion of the true causation of the mice's resulting behavior is of interest, as well as further inspection of clustering neurons into likewise brain regions. The clustering performed in this report was done with preliminary knowledge of neuroscience, thus the model could be improved with greater knowledge of the behaviors of specific neurons. 
+
+***  
+## Background 
+
+Mice and human brains contain share similar structural and genetic traits, thus scientific experiments are often conducted on mice in order to better understand the human brain. [(Caruso, 2023)](https://news.harvard.edu/gazette/story/2023/03/study-confirms-why-we-need-female-mice-in-neuroscience-research/#:~:text=This%20is%20because%20mouse%20and,build%20models%20of%20human%20diseases.) [Steinmetz et al](https://www.nature.com/articles/s41586-019-1787-x#Sec7) conducted an experiment on mice to inspect the distribution of neurons and observe the resulting behaviors of mice when presented a visual stimuli. The data collected in the experiment contains 39 sessions of several trials from 10 mice. Prior to collecting data from the mice, each mouse was trained to understand the difference between a success and failure trial. My project will use a subset of 18 sessions and 4 mice from the published data. Readers will better understand the behavior of neurons and how activity between different brain regions affects the behavior of mice.
+
+**Variable Definitions**
+
+- feedback_type: type of the feedback, 1 for success and -1 for failure
+
+- contrast_left: contrast of the left stimulus
+
+- contrast_right: contrast of the right stimulus
+
+- time: centers of the time bins for spks
+
+- spks: numbers of spikes of neurons in the visual cortex in time bins defined in time
+
+- brain_area: area of the brain where each neuron lives
+
+
+Through detailed analysis of the experimental data, this report aims to uncover significant associations between neuronal activity and observed behaviors. Previous studies indicated that neuron activity across several brain areas are correlated to action selection. Thus, I will further inspect this claim in the report and use the available results to better my prediction model. The results of this report advance knowledge of the brain and have potential applications to understanding neurodevelopmental disorders. It explores the relationship between neurons and behavior in mice, providing a foundation for future research in both animal models and human neuroscience. By investigating how neural activity influences behavior, we gain valuable insights into the fundamental workings of the brain.
+
+
+*** 
+
+## Descriptive analysis 
+
+Exploratory data analysis is an essential first step to understanding the data and identifying important variables. I will explore the features of the data sets in order to build our prediction model. In particular, I would like to (i) describe the data structures across sessions (e.g., number of neurons, number of trials, stimuli conditions, feedback types), (ii) explore the neural activities during each trial, (iii) explore the changes across trials, and (iv) explore homogeneity and heterogeneity across sessions and mice.
+
+### i) Describe the data structures across sessions (e.g., number of neurons, number of trials, stimuli conditions, feedback types)
+```{r echo = FALSE}
+# libraries 
+
+
+# load the data
+session1 <- readRDS("~/Documents/sta 141a final project data/session1.rds")
+session2 <- readRDS("~/Documents/sta 141a final project data/session2.rds")
+session3 <- readRDS("~/Documents/sta 141a final project data/session3.rds")
+session4 <- readRDS("~/Documents/sta 141a final project data/session4.rds")
+session5 <- readRDS("~/Documents/sta 141a final project data/session5.rds")
+session6 <- readRDS("~/Documents/sta 141a final project data/session6.rds")
+session7 <- readRDS("~/Documents/sta 141a final project data/session7.rds")
+session8 <- readRDS("~/Documents/sta 141a final project data/session8.rds")
+session9 <- readRDS("~/Documents/sta 141a final project data/session9.rds")
+session10 <- readRDS("~/Documents/sta 141a final project data/session10.rds")
+session11 <- readRDS("~/Documents/sta 141a final project data/session11.rds")
+session12 <- readRDS("~/Documents/sta 141a final project data/session12.rds")
+session13 <- readRDS("~/Documents/sta 141a final project data/session13.rds")
+session14 <- readRDS("~/Documents/sta 141a final project data/session14.rds")
+session15 <- readRDS("~/Documents/sta 141a final project data/session15.rds")
+session16 <- readRDS("~/Documents/sta 141a final project data/session16.rds")
+session17 <- readRDS("~/Documents/sta 141a final project data/session17.rds")
+session18 <- readRDS("~/Documents/sta 141a final project data/session18.rds")
+test1 <- readRDS("~/Documents/sta 141a final project data/test1.rds")
+test2 <- readRDS("~/Documents/sta 141a final project data/test2.rds")
+
+session = list(session1, session2, session3, session4, session5, session6, session7, session8, session9, session10, session11, session12, session13, session14, session15, session16, session17, session18)
+```
+
+
+```{r echo = FALSE}
+# build a table to describe all of the variables
+n.session=18
+n.session <- length(session)
+
+meta <- tibble(
+  mouse_name = rep('name', n.session),
+  date_exp = rep('dt', n.session),
+  n_brain_area = rep(0, n.session),
+  n_neurons = rep(0, n.session),
+  n_trials = rep(0, n.session),
+  success_rate = rep(0, n.session)
+)
+
+# Change column names
+colnames(meta) <- c("Mouse Name", "Experiment Date", "Number of Brain Areas",
+                    "Number of Neurons", "Number of Trials", "Success Rate")
+
+for (i in 1:n.session) {
+  tmp <- session[[i]]
+  meta[i, "Mouse Name"] <- tmp$mouse_name
+  meta[i, "Experiment Date"] <- tmp$date_exp
+  meta[i, "Number of Brain Areas"] <- length(unique(tmp$brain_area))
+  meta[i, "Number of Neurons"] <- dim(tmp$spks[[1]])[1]
+  meta[i, "Number of Trials"] <- length(tmp$feedback_type)
+  meta[i, "Success Rate"] <- mean(tmp$feedback_type + 1) / 2
+}
+
+kable(meta, format = "html", table.attr = "class='table table-striped'", digits = 2)
+
+```
+<p style="text-align: center;">**Table 1**. Data structure across sessions.</p>
+
+```{r echo = FALSE, out.width = "40%", fig.align = "center"}
+knitr::include_graphics("~/Documents/brain.png")
+```
+<p style="text-align: center;">**Figure 1**. Image of the brain areas used in experiment.</p>
+```{r echo = FALSE, out.width = "20%", fig.align = "center"}
+knitr::include_graphics("~/Documents/brain1.png")
+```
+<p style="text-align: center;">**Figure 2**. Brain areas cont.</p>
+
+
+```{r echo = FALSE}
+# table of all of the brain areas
+
+# Create the data frame
+brain_areas <- data.frame(
+  Brain_Area = c("ACA", "MOs", "LS", "root", "VISp", "CA3", "SUB", "DG", "CA1", "VISl",
+                 "VISpm", "POST", "VISam", "MG", "SPF", "LP", "MRN", "NB", "LGd", "TH",
+                 "VPL", "VISa", "LSr", "OLF", "ORB", "PL", "AUD", "SSp", "LD", "CP", "EPd",
+                 "PIR", "ILA", "TT", "PO", "ORBm", "MB", "SCm", "SCsg", "POL", "GPe", "VISrl",
+                 "MOp", "LSc", "PT", "MD", "LH", "ZI", "SCs", "RN", "MS", "RSP", "PAG",
+                 "BLA", "VPM", "SSs", "RT", "MEA", "ACB", "OT", "SI", "SNr"),
+  Definition = c("Anterior cingulate area", "Secondary motor area", "Lateral septal nucleus",
+                 "NA", "Primary visual area", "Field CA3", "Subiculum", "Dentate gyrus",
+                 "Field CA1", "Lateral visual area", "Posteromedial visual area", "Postsubiculum",
+                 "Anteromedial visual area", "Medial geniculate complex", "Subparafascicular nucleus",
+                 "Lateral posterior nucleus of the thalamus", "Midbrain reticular nucleus",
+                 "Nucleus of the brachium of the inferior colliculus", "Dorsal part of the lateral geniculate complex",
+                 "Thalamus", "Ventral posterolateral nucleus of the thalamus", "Anterolateral visual area",
+                 "Lateral septal nucleus, rostral (rostroventral) part", "Olfactory areas",
+                 "Orbital area", "Prelimbic area", "Auditory areas", "Primary somatosensory area",
+                 "Lateral dorsal nucleus of thalamus", "Caudoputamen", "Endopiriform nucleus, dorsal part",
+                 "Piriform area", "Infralimbic area", "Taenia tecta", "Posterior complex of the thalamus",
+                 "Orbital area, medial part", "Midbrain", "Superior colliculus, motor related",
+                 "Superior colliculus, superficial gray layer", "Posterior limiting nucleus of the thalamus",
+                 "Globus pallidus, external segment", "NA", "Primary motor area",
+                 "Lateral septal nucleus, caudal (caudodorsal) part", "Parataenial nucleus",
+                 "Mediodorsal nucleus of thalamus", "Lateral habenula", "Zona incerta",
+                 "Superior colliculus, sensory related", "Red nucleus", "Medial septal nucleus",
+                 "Retrosplenial area", "Periaqueductal gray", "Basolateral amygdalar nucleus",
+                 "Ventral posteromedial nucleus of the thalamus", "Supplemental somatosensory area",
+                 "Reticular nucleus of the thalamus", "Medial amygdalar nucleus",
+                 "Nucleus accumbens", "Olfactory tubercle", "Substantia innominata",
+                 "Substantia nigra, reticular part")
+)
+
+
+# Split the data frame into two smaller data frames
+num_rows <- nrow(brain_areas)
+split_index <- num_rows %/% 2
+
+df1 <- brain_areas[1:split_index, ]
+df2 <- brain_areas[(split_index + 1):num_rows, ]
+
+# Print the formatted table with two columns
+kable(list(df1, df2), format = "markdown", 
+      col.names = c("Brain Area", "Definition"), align = "l", row.names = FALSE)
+
+
+
+```
+<p style="text-align: center;">**Table 2**. Definitions of brain areas across all sessions.</p>
+
+Figure 1, 2 and Table 1, 2 give readers information about the structure of the dataset, as well as further definitions of the brain areas used in the dataset. Table 1 indicates that the dimension for each session differs, as the variables differ in size. The number of trials is different for every session, as well as the number of brain areas found. This can be difficult for analysis of this project, thus I aim to find a method to match the dimensions across all sessions to better analyze the dataset as a whole. I aim to focus more on the brain areas for this report because of the emphasis on neuron activity in Steinmetz's publication, thus it was important to identify the mouse brain areas used in the experiment.  
+
+### ii) Neural activities during each trial
+
+For each trial, there is a n x 40 matrix, n is the number of neurons present in the session. The column names correspond to times for the neuron activity, and the row names correspond to each neuron. There are several 0 values within the matrix, thus it is difficult to see the activity from only the numerical matrix. Thus, I will create visualizations to better understand the data given. 
+```{r echo = FALSE}
+average_spike_area<-function(i.t,this_session){
+  spk.trial = this_session$spks[[i.t]]
+  area= this_session$brain_area
+  spk.count=apply(spk.trial,1,sum)
+  spk.average.tapply=tapply(spk.count, area, mean)
+  return(spk.average.tapply)
+  }
+```
+
+
+
+```{r echo = FALSE}
+# load all of the trial summaries 
+#session 1
+library(tidyverse)
+i.s = 1
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary1 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary1[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary1)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary1 <- as_tibble(trial.summary1)
+feedback = trial.summary1$feedback
+
+# load all of the trial summaries 
+#session 2
+library(tidyverse)
+i.s = 2
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary2 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary2[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary2)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary2 <- as_tibble(trial.summary2)
+feedback = trial.summary2$feedback
+
+
+#session 3
+library(tidyverse)
+i.s = 3
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary3 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary3[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary3)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary3 <- as_tibble(trial.summary3)
+feedback = trial.summary3$feedback
+
+
+#session 4
+library(tidyverse)
+i.s = 4
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary4 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary4[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary4)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary4 <- as_tibble(trial.summary4)
+feedback = trial.summary4$feedback
+
+
+#session 5
+library(tidyverse)
+i.s = 5
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary5 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary5[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary5)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary5 <- as_tibble(trial.summary5)
+feedback = trial.summary5$feedback
+
+
+#session 6
+library(tidyverse)
+i.s = 6
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary6 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary6[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary6)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary6 <- as_tibble(trial.summary6)
+feedback = trial.summary6$feedback
+
+
+#session 7
+library(tidyverse)
+i.s = 7
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary7 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary7[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary7)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary7 <- as_tibble(trial.summary7)
+feedback = trial.summary7$feedback
+
+
+#session 3
+library(tidyverse)
+i.s = 8
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary8 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary8[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary8)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary8 <- as_tibble(trial.summary8)
+feedback = trial.summary8$feedback
+
+
+#session 9
+library(tidyverse)
+i.s = 9
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary9 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary9[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary9)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary9 <- as_tibble(trial.summary9)
+feedback = trial.summary9$feedback
+
+
+#session 10
+library(tidyverse)
+i.s = 10
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary10 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary10[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary10)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary10 <- as_tibble(trial.summary10)
+feedback = trial.summary10$feedback
+
+
+#session 11
+library(tidyverse)
+i.s = 11
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary11 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary11[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary11)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary11 <- as_tibble(trial.summary11)
+feedback = trial.summary11$feedback
+
+
+#session 12
+library(tidyverse)
+i.s = 12
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary12 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary12[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary12)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary12 <- as_tibble(trial.summary12)
+feedback = trial.summary12$feedback
+
+
+#session 13
+library(tidyverse)
+i.s = 13
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary13 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary13[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary13)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary13 <- as_tibble(trial.summary13)
+feedback = trial.summary13$feedback
+
+
+#session 14
+library(tidyverse)
+i.s = 14
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary14 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary14[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary14)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary14 <- as_tibble(trial.summary14)
+feedback = trial.summary14$feedback
+
+
+#session 15
+library(tidyverse)
+i.s = 15
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary15 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary15[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary15)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary15 <- as_tibble(trial.summary15)
+feedback = trial.summary15$feedback
+
+
+#session 16
+library(tidyverse)
+i.s = 16
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary16 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary16[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary16)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary16 <- as_tibble(trial.summary16)
+feedback = trial.summary16$feedback
+
+#session 17
+library(tidyverse)
+i.s = 17
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary17 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary17[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary17)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary17 <- as_tibble(trial.summary17)
+feedback = trial.summary17$feedback
+
+#session 18
+library(tidyverse)
+i.s = 18
+# for session 2
+n.trial=length(session[[i.s]]$feedback_type)
+n.area=length(unique(session[[i.s]]$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.summary18 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.summary18[i.t,]=c(average_spike_area(i.t,this_session = session[[i.s]]),
+                          session[[i.s]]$feedback_type[i.t],
+                        session[[i.s]]$contrast_left[i.t],
+                        session[[i.s]]$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.summary18)=c(names(average_spike_area(i.t,this_session = session[[i.s]])), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.summary18 <- as_tibble(trial.summary18)
+feedback = trial.summary18$feedback
+
+trial.summary1$feedback[trial.summary1$feedback == -1] <- 0
+trial.summary2$feedback[trial.summary2$feedback == -1] <- 0
+trial.summary3$feedback[trial.summary3$feedback == -1] <- 0
+trial.summary4$feedback[trial.summary4$feedback == -1] <- 0
+trial.summary5$feedback[trial.summary5$feedback == -1] <- 0
+trial.summary6$feedback[trial.summary6$feedback == -1] <- 0
+trial.summary7$feedback[trial.summary7$feedback == -1] <- 0
+trial.summary8$feedback[trial.summary8$feedback == -1] <- 0
+trial.summary9$feedback[trial.summary9$feedback == -1] <- 0
+trial.summary10$feedback[trial.summary10$feedback == -1] <- 0
+trial.summary11$feedback[trial.summary11$feedback == -1] <- 0
+trial.summary12$feedback[trial.summary12$feedback == -1] <- 0
+trial.summary13$feedback[trial.summary13$feedback == -1] <- 0
+trial.summary14$feedback[trial.summary14$feedback == -1] <- 0
+trial.summary15$feedback[trial.summary15$feedback == -1] <- 0
+trial.summary16$feedback[trial.summary16$feedback == -1] <- 0
+trial.summary17$feedback[trial.summary17$feedback == -1] <- 0
+trial.summary18$feedback[trial.summary18$feedback == -1] <- 0
+```
+
+
+```{r echo = FALSE, out.width = "60%", fig.align = "center"}
+i.s = 1
+i.t = 1
+n.area=length(unique(session[[i.s]]$brain_area ))
+area.col=rainbow(n=n.area,alpha=0.7)
+plot.trial<-function(i.t,area, area.col,this_session){
+    
+    spks=this_session$spks[[i.t]];
+    n.neuron=dim(spks)[1]
+    time.points=this_session$time[[i.t]]
+    
+    plot(0,0,xlim=c(min(time.points),max(time.points)),ylim=c(0,n.neuron+1),col='white', xlab='Time (s)',yaxt='n', ylab='Neuron', main="Neuron Activity in Trial 1, Success",cex.lab=1.5)
+    for(i in 1:n.neuron){
+        i.a=which(area== this_session$brain_area[i]);
+        col.this=area.col[i.a]
+        
+        ids.spike=which(spks[i,]>0) # find out when there are spikes 
+        if( length(ids.spike)>0 ){
+            points(x=time.points[ids.spike],y=rep(i, length(ids.spike) ),pch='.',cex=2, col=col.this)
+        }
+      
+            
+    }
+    
+legend("topright", 
+  legend = area, 
+  col = area.col, 
+  pch = 16, 
+  cex = 0.8
+  )
+  }
+varname=names(trial.summary1);
+area=varname[1:(length(varname)-4)]
+plot.trial(1,area, area.col,session[[1]])
+```
+<p style="text-align: center;">**Figure 3**. Graph of neuron presence in Session 1, Trial 1</p>
+
+Figure 3 is an example of visualization of the numerical matrix of neuron activity in one trial. This graph gives a quick summary of what the matrix contains, and is a powerful tool to better understand the dataset. After generating visualizations for several trials, the data for the neuron activity proves to be difficult to analyze in this format. I are aware that all of the neurons listed in each trial are active, however the visual does not indicate the magnitude of activity. 
+
+
+### iii) Explore the changes across trials
+
+```{r echo = FALSE, message=FALSE, warning=FALSE, out.width = "100%", fig.height = 6.5, fig.align = "center"}
+suppressWarnings({
+combined_plot1 <- ggplot(trial.summary1) +
+  geom_line(aes(x = 1:114, y = ACA, color = "ACA")) +
+  geom_line(aes(x = 1:114, y = CA3, color = "CA3")) +
+  geom_line(aes(x = 1:114, y = DG, color = "DG")) +
+  geom_line(aes(x = 1:114, y = LS, color = "LS")) +
+  geom_line(aes(x = 1:114, y = MOs, color = "MOs")) +
+  geom_line(aes(x = 1:114, y = root, color = "root")) +
+  geom_line(aes(x = 1:114, y = SUB, color = "SUB")) +
+  geom_line(aes(x = 1:114, y = VISp, color = "VISp")) +
+  ylim(0, 4.5) +
+  xlab("Trials") + ylab("Average Neuron Spikes") +
+  scale_color_manual(values = viridis(8))
+
+combined_plot4 <- ggplot(trial.summary4) +
+  geom_line(aes(x = 1:249, y = ACA, color = "ACA")) +
+  geom_line(aes(x = 1:249, y = CA1, color = "CA1")) +
+  geom_line(aes(x = 1:249, y = DG, color = "DG")) +
+  geom_line(aes(x = 1:249, y = LGd, color = "LGd")) +
+  geom_line(aes(x = 1:249, y = LSr, color = "LSr")) +
+  geom_line(aes(x = 1:249, y = MOs, color = "MOs")) +
+  geom_line(aes(x = 1:249, y = SUB, color = "SUB")) +
+  geom_line(aes(x = 1:249, y = TH, color = "TH")) +
+  geom_line(aes(x = 1:249, y = VISa, color = "VISa")) +
+  geom_line(aes(x = 1:249, y = VISp, color = "VISp")) +
+  geom_line(aes(x = 1:249, y = VPL, color = "VPL")) +
+  ylim(0, 5) +
+  xlab("Trials") + ylab("Average Neuron Spikes") +
+  scale_color_manual(values = viridis(11))
+
+combined_plot8 <- ggplot(trial.summary8) +
+  geom_line(aes(x = 1:250, y = CA1, color = "CA1")) +
+  geom_line(aes(x = 1:250, y = CA3, color = "CA3")) +
+  geom_line(aes(x = 1:250, y = DG, color = "DG")) +
+  geom_line(aes(x = 1:250, y = ILA, color = "ILA")) +
+  geom_line(aes(x = 1:250, y = LD, color = "LP")) +
+  geom_line(aes(x = 1:250, y = LSr, color = "LSr")) +
+  geom_line(aes(x = 1:250, y = PL, color = "PL")) +
+  geom_line(aes(x = 1:250, y = PO, color = "PO")) +
+  geom_line(aes(x = 1:250, y = root, color = "root")) +
+  geom_line(aes(x = 1:250, y = SUB, color = "SUB")) +
+  geom_line(aes(x = 1:250, y = TT, color = "TT")) +
+  geom_line(aes(x = 1:250, y = VISa, color = "VISa")) +
+  geom_line(aes(x = 1:250, y = VISp, color = "VISp")) +
+  ylim(-1, 5) +
+  xlab("Trials") + ylab("Average Neuron Spikes") +
+  scale_color_manual(values = viridis(13))
+
+
+combined_plot12 <- ggplot(trial.summary12) +
+  geom_line(aes(x = 1:340, y = ACA, color = "ACA")) +
+  geom_line(aes(x = 1:340, y = CA1, color = "CA1")) +
+  geom_line(aes(x = 1:340, y = DG, color = "DG")) +
+  geom_line(aes(x = 1:340, y = LGd, color = "LGd")) +
+  geom_line(aes(x = 1:340, y = LH, color = "LH")) +
+  geom_line(aes(x = 1:340, y = MD, color = "MD")) +
+  geom_line(aes(x = 1:340, y = MOs, color = "MOs")) +
+  geom_line(aes(x = 1:340, y = PL, color = "PL")) +
+  geom_line(aes(x = 1:340, y = root, color = "root")) +
+  geom_line(aes(x = 1:340, y = SUB, color = "SUB")) +
+  geom_line(aes(x = 1:340, y = VISam, color = "VISam")) +
+  geom_line(aes(x = 1:340, y = VISp, color = "VISp")) +
+  ylim(-1, 5) +
+  xlab("Trials") + ylab("Average Neuron Spikes") +
+  scale_color_manual(values = viridis(12))
+
+
+
+library(gridExtra)
+combined_plots <- grid.arrange(combined_plot1 + labs(title = "Session 1"),
+                               combined_plot4 + labs(title = "Session 4"),
+                               combined_plot8 + labs(title = "Session 8"),
+                               combined_plot12 + labs(title = "Session 12"),
+                               ncol = 2, top = "Combined Plots")
+combined_plots
+
+})
+```
+<p style="text-align: center;">**Figure 4**. Graphs show average neuron activity in select sessions </p>
+
+```{r echo = FALSE}
+suppressWarnings({
+# heatmap to show the difference between success and failure trials 
+filtered_df_1_success <- trial.summary1 %>%
+  filter(feedback == 1) 
+data_success_trials_1 <- as.matrix(filtered_df_1_success[,1:8])
+data_success_trials_1_df <- as.data.frame(data_success_trials_1[,1:8])
+
+p1_s <- plot_ly(x = colnames(data_success_trials_1_df), y = data_success_trials_1_df$Trial, z = as.matrix(data_success_trials_1_df[1:69, 1:8]), type = "heatmap") %>%
+    layout(margin = list(l=120))
+
+filtered_df_1_fail <- trial.summary1 %>%
+  filter(feedback == 0) 
+data_fail_trials_1 <- as.matrix(filtered_df_1_fail[,1:8])
+data_fail_trials_1_df <- as.data.frame(data_fail_trials_1[,1:8])
+
+p1_f <- plot_ly(x = colnames(data_fail_trials_1_df), y = data_fail_trials_1_df$Trial, z = as.matrix(data_fail_trials_1_df[1:45, 1:8]), type = "heatmap") %>%
+    layout(margin = list(l=120))
+
+
+
+p1_s <- p1_s %>% layout(title = "Session 1 across Trials: Success")
+p1_f <- p1_f %>% layout(title = "Session 1 across Trials: Success (left) and Failure (right)")
+
+subplot(p1_s, p1_f, nrows = 1, widths = c(0.5, 0.5), titleX = FALSE)
+
+})
+
+
+```
+<p style="text-align: center;">**Figure 5**. Interactive heatmap to show neuron activity across trials in Session 1</p>
+
+The goal of the the two figures is to find potential patterns within the neuron activity in order to merge the sessions and reduce the dimensionality of the whole dataset. Figure 4 shows select sessions, the first session for a unique mouse, and the neuron activity across trials. We can see there are potential similarities of neuron activity across sessions between brain areas that are the same. Furthermore, in Figure 5, I aim to inspect differences between the success and failure trials to better understand the variable I am predicting. The heatmap shows the neuron activity in session 1, the left is the success trials and has areas that show higher neuron activity than the failure trials. Thus, there is a difference between the success and failure trials among the neurons and we can use the neuron activity to better understand that difference. 
+
+
+### iv) Explore homogeneity and heterogeneity across sessions and mice.
+
+```{r echo = FALSE}
+index_list = list()
+process_data <- function(sessionnum) {
+  rows <- unique(session[[sessionnum]]$brain_area)
+for (i in seq_along(rows)) {
+  index_list[[i]] <- which(session[[sessionnum]]$brain_area == rows[i])
+}
+  
+success_trials <- which(session[[sessionnum]]$feedback_type == 1)
+fail_trials <- which(session[[sessionnum]]$feedback_type == -1)
+
+  overall_df <- data.frame()
+  df_list <- list()
+  
+  for (j in 1:length(unique(session[[sessionnum]]$brain_area))) {
+    df <- data.frame()
+    
+    for (i in success_trials) {
+      average <- apply(session[[sessionnum]]$spks[[i]][index_list[[j]], ], 2, mean)
+      df <- rbind(df, average)
+    }
+    df_list[[j]] <- df
+    avg <- apply(df, 2, mean)
+    overall_df <- rbind(overall_df, avg)
+  }
+  
+  overall_df_fails <- data.frame()
+  df_list <- list()
+  
+  for (j in 1:length(unique(session[[sessionnum]]$brain_area))) {
+    df <- data.frame()
+    
+    for (i in fail_trials) {
+      average <- apply(session[[sessionnum]]$spks[[i]][index_list[[j]], ], 2, mean)
+      df <- rbind(df, average)
+    }
+    df_list[[j]] <- df
+    avg <- apply(df, 2, mean)
+    overall_df_fails <- rbind(overall_df_fails, avg)
+  }
+  dataset <- cbind(overall_df_fails, overall_df)
+  return(dataset)
+}
+```
+
+```{r echo = FALSE}
+
+
+data1 <- process_data(1)
+data2<- process_data(2)
+data3 <- process_data(3)
+data4 <- process_data(4)
+data5 <- process_data(5)
+data6 <- process_data(6)
+data7 <- process_data(7)
+data8 <- process_data(8)
+data9 <- process_data(9)
+data10<- process_data(10)
+data11 <- process_data(11)
+data12 <- process_data(12)
+data13 <- process_data(13)
+data14 <- process_data(14)
+data15 <- process_data(15)
+data16 <- process_data(16)
+data17 <- process_data(17)
+data18 <- process_data(18)
+
+# Create a list with the existing data variables
+data_list <- list(data1, data2, data3, data4, data5, data6, data7, data8,
+                  data9, data10, data11, data12, data13, data14, data15, 
+                  data16, data17, data18)
+
+# Calculate the average row for each dataset
+average_rows <- lapply(data_list, colMeans)
+
+# Combine the average rows into one dataset
+combined_average <- do.call(rbind, average_rows)
+
+
+# Create a list with the existing data variables in the desired order
+data_list <- list(data1, data2, data3, data4, data5, data6, data7, data8,
+                  data9, data10, data11, data12, data13, data14, data15, 
+                  data16, data17, data18)
+
+# Calculate the average row for each dataset
+average_rows <- lapply(data_list, colMeans)
+
+# Combine the average rows into one dataset
+combined_average <- do.call(rbind, average_rows)
+
+# Create a data frame with the combined average rows
+average_data <- data.frame(Trial = 1:80, t(combined_average))
+
+# Reshape the data into long format
+library(tidyr)
+average_data_long <- pivot_longer(average_data, cols = -Trial, names_to = "Session", values_to = "Value")
+
+# Reorder the Session factor levels
+average_data_long$Session <- factor(average_data_long$Session, levels = paste0("X", 1:18))
+
+# Plot 18 lines representing the average rows
+library(ggplot2)
+
+plot1 <- ggplot(average_data_long, aes(x = Trial, y = Value, color = Session)) +
+  geom_line() +
+  geom_vline(xintercept = 40, linetype = "dashed") +
+  labs(title = "Average Neuron Activity by Session",
+       x = "Times (Failure: left | Success: right)",
+       y = "Average Neuron Activity") +
+  scale_color_manual(values = c("red", "blue", "green", "orange", "purple", "pink", "brown", "gray",
+                                "black", "cyan", "magenta", "darkgreen", "darkblue", "darkred",
+                                "darkorange", "darkcyan", "darkgray", "yellow")) +
+  guides(color = guide_legend(title = "Session"))
+
+plot1
+
+```
+<p style="text-align: center;">**Figure 6**. Line graph to show neuron activity across Sessions</p>
+```{r echo = FALSE}
+# Define color assignments for each session
+color_assignments <- c(rep("red", 3), rep("blue", 4), rep("green", 4), rep("purple", 7))
+
+plot2 <- ggplot(average_data_long, aes(x = Trial, y = Value, color = Session)) +
+  geom_line() +
+  geom_vline(xintercept = 40, linetype = "dashed") +
+  labs(title = "Average Neuron Activity by Mice",
+       x = "Times (Failure: left | Success: right)",
+       y = "Average Neuron Activity") +
+  scale_color_manual(values = color_assignments)
+plot2
+```
+<p style="text-align: center;">**Figure 7**. Line graph to show neuron activity across Mice</p>
+<p style="text-align: center;">Red: Cori, Blue: Forssmann, Green: Hench, Purple: Lederberg</p>
+
+**Discussion of Part 1** 
+
+Our goal of this section is to see what variable to explore when attempting to predict the mice's behavior. First, I see in Figure 5 that there is a difference between the success and failure trials. The heatmap indicates that there is higher neuron activity in success trials. Although only session 1 is included as an example, it is clear that there is a difference in neuron activity for success and failure trials in Figure 6. The first 40 time bins correspond to failure trials and the next 40 time bins correspond to success trials. Across all sessions, there is a general trend in success trials that is not seen in failure trials. Success trials have an upwards curve compared to the overall flat trend of failure trials. Thus, since there is a difference between the success and failure trials, it is possible to find predictor variables to predict the feedback type. 
+
+Furthermore, I classified the sessions by the mice used in the experiment. Each color corresponds to a different mice in Figure 7. From the graph, there is no clear separation between each mouse's neuron activity. It would be difficult to cluster the neuron activity by mice as they do not share similar activities. Thus, I will look into a different variable to use as a predictor variable for the mice's behavior. 
+
+The last variable to inspect is the neuron activity. Figure 4 demonstrated similar neuron activity for neurons in the same brain area. Across sessions, the neuron activity in the same area have similar average neuron activity. Neurons can be clustered based on similar neuron activity because of the similar patterns that emerge. [(Michael J. Berry II1 and Gašper Tkačik2, 2020)](https://www.frontiersin.org/articles/10.3389/fncom.2020.00020/full) We will use this method in the next part, Data Integration, and reduce the dimensionality of the dataset to build a prediction model. 
+
+
+## Data integration
+
+Using the findings in Part 1, I will propose an approach to combine data across trials by extracting the shared patters across sessions and addressing the differences between sessions. The goal of this part is to enable the borrowing of information across sessions to enhance the prediction performance in Part 3.
+
+**Patterns and addressing differences across sessions**
+
+Neurons in the same brain areas have similar activity. First, I will inspect the relationship between neuron activity and feedback type for each session. After fitting a logistic regression model for each session, majority of the predictors (brain areas) were insignificant (significance level = 0.05). Thus, the relationship between the neuron activity and feedback type within each session is weak. This is a pattern across all sessions, thus I aim to combine the sessions to create a bigger dataset to improve the model. In order to reduce the dimensions of the model, I aim to cluster the brain areas into larger regions. Brain areas were grouped into larger regions in Steinmetz's publication such as the visual and frontal cortex. Further exploration in these brain regions is essential if I were to classify the neurons into larger brain regions, however I will use clustering and unsupervised learning to reduce the dimensionality of the dataset. 
+
+**Prepare the dataset**
+
+In order to find clusters within the dataset, I will reduce the dimensionality of the dataset. Within each trial in each session, we start with a nx40 matrix. N is each neuron and 40 is the number of time bins. For each session, I took each trial and placed the success trials and failure trials next to each other. This allows for efficient clustering. Now, with the nx80 matrix, I took the average of all of the same neurons, leaving a n=(unique number of neurons)x80 matrix for the session. I repeated this step for every session. This led to a 171x80 matrix. However, across sessions, there are repeating brain areas. Thus, I took the average of the same brain areas across sessions, leading to a 62x80 matrix. There are 62 unique brain areas across all sessions. I will use this dataset to perform clustering. 
+
+
+**Why K-means clustering?**
+
+K-means clustering is relatively simple and easy to understand compared to other clustering algorithms. It partitions a given dataset into K clusters, where each data point belongs to the cluster with the nearest mean. It uses Euclidian distiance to calculate the distance between points, which is the best method to finding similar neuron activity. Furthermore, it can efficiently handle large datasets with a large number of data points and variables and it is computationally efficient. It allows us to control the number of clusters, which is ideal for this dataset because it allows us to find the most significant brain regions. 
+
+```{r echo = FALSE}
+# create a combined dataset, and normalize the values to ensure clustering is effective 
+new_dataset <- data.frame()
+column_names1 = c("x1", "x2", "x3")
+# Loop through the matrices
+for (i in 1:18) {
+  assign(paste0("data", i), `colnames<-`(get(paste0("data", i)), column_names1))
+}
+
+# Combine the matrices into a single matrix
+new_dataset <- do.call(rbind, mget(paste0("data", 1:18)))
+
+# Check for missing values in the dataset
+missing_values <- apply(new_dataset, 2, function(x) any(is.na(x)))
+
+# Identify columns with missing values
+columns_with_missing <- names(new_dataset)[missing_values]
+
+# Impute missing values with column means
+for (column in columns_with_missing) {
+  new_dataset[, column][is.na(new_dataset[, column])] <- mean(new_dataset[, column], na.rm = TRUE)
+}
+normalized_dataset <- data.frame()
+# Perform min-max scaling
+normalized_dataset <- scale(new_dataset, center = TRUE, scale = TRUE)
+
+```
+
+```{r echo = FALSE}
+normalized_dataset <- data.matrix(normalized_dataset)
+for (i in 1:80) {
+  colnames(normalized_dataset)[i] <- i
+}
+
+unique_brain_areas_all <- c()
+for (i in 1:18) {
+  unique_brain_areas_all <- c(unique_brain_areas_all, unique(session[[i]]$brain_area))
+}
+unique_unique_brain_areas_all <- (unique(unique_brain_areas_all))
+normalized_dataset <- (cbind(normalized_dataset, unique_brain_areas_all))
+
+```
+
+```{r echo = FALSE}
+# take the average of repeating brain areas so we only cluster unique brain areas
+combined_matrix <- matrix(0, nrow = length(unique_unique_brain_areas_all), ncol = 80)
+
+# Loop over unique brain areas
+for (i in 1:length(unique_unique_brain_areas_all)) {
+  # Find rows that match the current brain area
+  matching_rows <- which(unique_brain_areas_all == unique_unique_brain_areas_all[i])
+  dataaaa <- data.frame(normalized_dataset[matching_rows, 1:80])
+  if (ncol(dataaaa) != 1) {
+    numeric_cols <- apply(dataaaa, 2, as.numeric)
+  # Combine matching rows and calculate the average
+    combined_row <- colMeans(numeric_cols, na.rm = TRUE)
+    combined_matrix[i, ] <- combined_row
+  } else {
+    numeric_cols <- apply(dataaaa, 2, as.numeric)
+    combined_matrix[i, ] <- numeric_cols
+  }
+}
+
+  
+# Store the combined row in the combined matrix
+combined_matrix_labeled <- cbind(combined_matrix, unique_unique_brain_areas_all)
+```
+
+```{r echo = FALSE}
+# cluster the unique brain areas into 4 larger brain regions 
+set.seed(6)
+wcss = vector()
+for (i in 1:61) wcss[i] = sum(kmeans(combined_matrix, i)$withinss)
+plot(1:61,
+     wcss,
+     type = 'b',
+     main = paste('The Elbow Method'),
+     xlab = 'Number of clusters',
+     ylab = 'WCSS',
+     xlim = c(0,20))
+
+
+set.seed(29)
+kmeans = kmeans(x = combined_matrix, centers = 4)
+y_kmeans = kmeans$cluster
+```
+<p style="text-align: center;">**Figure 8**. Line graph to shows the significant number of clusters for the dataset</p>
+
+Figure 8 indicates the best number of clusters to use for the k-means clustering. Looking at Figure 8, we will use 4 clusters for the final model. 
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+suppressWarnings({
+clustered_combined_matrix <- cbind(combined_matrix, unique_unique_brain_areas_all, y_kmeans)
+
+brain_cluster <- data.frame(cbind(unique_unique_brain_areas_all, y_kmeans))
+
+
+new_brain_area_1 <- data.frame(clustered_combined_matrix) %>% filter(y_kmeans == 1)
+new_brain_area_2 <- data.frame(clustered_combined_matrix) %>% filter(y_kmeans == 2)
+new_brain_area_3 <- data.frame(clustered_combined_matrix) %>% filter(y_kmeans == 3)
+new_brain_area_4 <- data.frame(clustered_combined_matrix) %>% filter(y_kmeans == 4)
+
+
+
+
+new_brain_area_1_new <- as.data.frame(lapply(new_brain_area_1[,1:80], as.numeric))
+new_brain_area_1_new <- data.frame(t(new_brain_area_1_new))
+
+
+new_brain_area_2_new <- as.data.frame(lapply(new_brain_area_2[,1:80], as.numeric))
+new_brain_area_2_new <- data.frame(t(new_brain_area_2_new))
+
+  
+new_brain_area_3_new <- as.data.frame(lapply(new_brain_area_3[,1:80], as.numeric))
+new_brain_area_3_new <- data.frame(t(new_brain_area_3_new))
+
+
+new_brain_area_4_new <- as.data.frame(lapply(new_brain_area_4[,1:80], as.numeric))
+new_brain_area_4_new <- data.frame(t(new_brain_area_4_new))
+
+
+# Function to create line plot for a given dataset
+create_line_plot <- function(data, y_limit, color) {
+  # Set the column names as the y-values in the plot
+  y_values <- colnames(data)
+  
+  # Create the ggplot
+  ggplot(data) +
+    # Iterate over the y-values and add geom_line for each
+    lapply(y_values, function(y) {
+      geom_line(aes(x = 1:80, y = .data[[y]]), color = color)
+    }) +
+    # Add x-axis and y-axis labels
+    xlab("Time") +
+    ylab("Average Neuron Activity") +
+    # Set plot title
+    ggtitle("Cluster Activity") +
+    # Set y-axis limits
+    ylim(y_limit) 
+}
+
+# Create line plot for brain_area_1_new
+plot1 <- create_line_plot(new_brain_area_1_new, c(-1, 5), "blue")
+
+# Create line plot for brain_area_2_new
+plot2 <- create_line_plot(new_brain_area_2_new, c(-1, 5), "red")
+
+# Create line plot for brain_area_3_new
+plot3 <- create_line_plot(new_brain_area_3_new, c(-1, 5), "green")
+
+# Create line plot for brain_area_4_new
+plot4 <- create_line_plot(new_brain_area_4_new, c(-1, 5), "orange")
+
+# Combine all plots into one
+combined_plot <- plot1 + plot2 + plot3 + plot4
+
+# Display the combined plot
+combined_plot
+})
+```
+<p style="text-align: center;">**Figure 9**. Each graph shows the average neuron activity of the resulting cluster</p>
+
+After clustering the dataset, the neuron activity for each cluster is approximately similar. With 62 unique brain areas and 80 time bins, we used the 62x80 matrix to find the 4 clusters. We now use these clusters to classify the original dataset. This will create a large dataset that we can use for our predictive model. 
+
+
+## Predictive modeling
+
+**Prepare the original dataset to build a predictive model using the clusters**
+
+I will first prepare the data to build the predictive model. With the clusters identified, I will classify the neurons of the original dataset into the 4 brain regions and find the best model to identify the significance of the brain regions to predict the feedback type of the mouse. I will compare two models, logistic regression and random forest model. 
+
+i) Characteristics of Logistic Regression
+
+- Logistic Regression is used for binary classification 
+- It assumes a linear relationship between the features and the log-odds of the outcome
+- Logistic Regression can provide interpretable coefficients 
+- It is computationally efficient and can handle large datasets
+
+
+ii) Characteristics of Random Forest
+
+- Random Forest is an ensemble learning method that combines multiple decision trees to make predictions
+- Random Forest is known for its ability to capture complex interactions and non-linear relationships in the data
+- It can handle a large number of input variables without overfitting
+- Random Forest is less sensitive to outliers and does not assume linear relationships between the features and the outcome
+- It can provide feature importance measures, which can help in understanding the most influential features in the prediction
+
+
+Prior to receiving the final test set, I split the original dataset into test and train data. I will fit the test dataset with each model and determine the best model to use for the final test set. 
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+converted_vectors <- list()
+for (i in 1:18) {
+  # Extract the session-specific brain_area and session data
+  session_brain_area <- session[[i]]$brain_area
+  session_data <- session[[i]]$data
+  
+  # Perform the conversion using the command
+  converted_vector <- brain_cluster$y_kmeans[match(session_brain_area, brain_cluster$unique_unique_brain_areas_all)]
+  
+  # Store the converted vector in the list
+  converted_vectors[[i]] <- converted_vector
+}
+
+
+create_final_matrix <- function(session_n) {
+
+  session_1_predict <- data.frame()
+  for (i in 1:length(session[[session_n]]$feedback_type)) {
+    trial_1_session <- data.frame(cbind(data.frame(session[[session_n]]$spks[i]), converted_vectors[[session_n]]))
+    labels <- trial_1_session[, 41]
+    averages <- aggregate(trial_1_session, by = list(Label = labels), FUN = mean)
+    session_1_predict <- rbind(session_1_predict, averages)
+  }
+
+# Output the averages
+  clustered_sum_column <- data.frame(rowSums(session_1_predict[,2:41]))
+  clustered_sum_column <- cbind(clustered_sum_column[,1], session_1_predict[,1])
+  data_clustered <- data.frame(clustered_sum_column)
+
+
+# Create an empty matrix with dimensions n x 3
+  labels_list_1 <- as.numeric(unique(labels))
+  vector <- sort(labels_list_1)
+  result_matrix <- matrix(0, nrow = length(session[[session_n]]$feedback_type), ncol = length(vector))
+
+  j = 1
+# Iterate over the conditions using a for loop
+  for (i in vector) {
+  
+  # Subset the values from data_clustered$X1 based on the condition
+    subset_values <- data_clustered$X1[data_clustered$X2 == i]
+  
+  # Assign the subset values to the corresponding column in result_matrix
+    result_matrix[, j] <- subset_values
+    j = j + 1
+  }
+  data.frame.s <- data.frame(result_matrix)
+  colnames(data.frame.s) <- vector
+  data.frame.s <- data.frame(lapply(data.frame.s, as.numeric))
+  return(data.frame.s)
+}
+
+
+
+```
+
+
+```{r echo = FALSE, message=FALSE, warnings=FALSE}
+suppressWarnings({
+session_1 <- create_final_matrix(1)
+session_2 <- create_final_matrix(2)
+session_3 <- create_final_matrix(3)
+
+session_4 <- create_final_matrix(4)
+
+session_5 <- create_final_matrix(5)
+
+session_6 <- create_final_matrix(6)
+
+session_7 <- create_final_matrix(7)
+
+session_8 <- create_final_matrix(8)
+
+session_9 <- create_final_matrix(9)
+
+session_10 <- create_final_matrix(10)
+
+session_11 <- create_final_matrix(11)
+session_12 <- create_final_matrix(12)
+session_13 <- create_final_matrix(13)
+session_14 <- create_final_matrix(14)
+session_15 <- create_final_matrix(15)
+session_16 <- create_final_matrix(16)
+session_17 <- create_final_matrix(17)
+session_18 <- create_final_matrix(18)
+
+
+session_1 <- data.frame(cbind(session_1[,1:2], 0, session_1[, 3]))
+
+session_2 <- data.frame(cbind(0, session_2[,1], 0, session_2[, 2]))
+session_3 
+session_4 <- data.frame(cbind(session_4[,1:2], 0, session_4[, 3]))
+session_5 <- data.frame(cbind(0, session_5[,1], 0, session_5[, 2]))
+session_6 <- data.frame(cbind(0, session_6[,1], 0, session_6[, 2]))
+session_7 <- data.frame(cbind(session_7[,1:2], 0, session_7[, 3]))
+session_8 <- data.frame(cbind(0, session_8[,1], 0, session_8[, 2]))
+
+session_9 <- data.frame(cbind(session_9[,1:2], 0, session_9[, 3]))
+session_10 <- data.frame(cbind(session_10[,1:2], 0, session_10[, 3]))
+session_11 <- data.frame(cbind(0, session_11[,1], 0, session_11[, 2]))
+session_12 
+session_13
+session_14 <- data.frame(cbind(session_14[,1:2], 0, session_14[, 3]))
+session_15 <- data.frame(cbind(session_15[,1:2], 0, session_15[, 3]))
+session_16 <- data.frame(cbind(session_16[,1:2], 0, session_16[, 3]))
+session_17 <- data.frame(cbind(session_17[,1:2], 0, session_17[, 3]))
+session_18 <- data.frame(cbind(session_18[,1:2], 0, session_18[, 3]))
+
+session_1 <- cbind(session_1, trial.summary1[,9:12])
+session_2 <- cbind(session_2, trial.summary2[,6:9])
+session_3 <- cbind(session_3, trial.summary3[,12:15])
+session_4 <- cbind(session_4, trial.summary4[,12:15])
+session_5 <- cbind(session_5, trial.summary5[,11:14])
+session_6 <- cbind(session_6, trial.summary6[,6:9])
+session_7 <- cbind(session_7, trial.summary7[,9:12])
+session_8 <- cbind(session_8, trial.summary8[,16:19])
+session_9 <- cbind(session_9, trial.summary9[,13:16])
+session_10 <- cbind(session_10, trial.summary10[,14:17])
+session_11 <- cbind(session_11, trial.summary11[,7:10])
+session_12 <- cbind(session_12, trial.summary12[,13:16])
+session_13 <- cbind(session_13, trial.summary13[,16:19])
+session_14 <- cbind(session_14, trial.summary14[,11:14])
+session_15 <- cbind(session_15, trial.summary15[,9:12])
+session_16 <- cbind(session_16, trial.summary16[,7:10])
+session_17 <- cbind(session_17, trial.summary17[,7:10])
+session_18 <- cbind(session_18, trial.summary18[,11:14])
+
+
+
+ colnames(session_1)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_2)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_3)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_4)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_5)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_6)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_7)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_8)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_9)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_10)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_11)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_12)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_13)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_14)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_15)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_16)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_17)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(session_18)[1:4] <- c("X1", "X2", "X3", "X4")
+
+combined_sessions_final <- rbind(session_1, session_2, session_3, session_4, session_5, session_6, session_7, session_8, session_9, session_10, session_11, session_12, session_13, session_14, session_15, session_16, session_17, session_18)
+})
+```
+
+```{r echo = FALSE}
+suppressWarnings({
+# assign test and train data
+set.seed(1)
+train_indices <- sample(1:nrow(combined_sessions_final), 0.8 * nrow(combined_sessions_final))
+train_data <- combined_sessions_final[train_indices, ]
+test_data <- combined_sessions_final[-train_indices, ]
+
+})
+```
+
+```{r echo = FALSE, message=FALSE, warnings=FALSE}
+suppressWarnings({
+set.seed(1)
+model_log <- glm(feedback ~ X1 + X2 + X3 + X4, data = train_data, family = binomial)
+
+
+
+predictions1 <- predict(model_log, newdata = test_data, type = "response")
+# 
+# # Convert predicted probabilities to binary predictions
+binary_predictions1 <- ifelse(predictions1 > 0.5, 1, 0)
+confusion_matrix1 <- table(test_data$feedback, binary_predictions1)
+
+confusion_matrix1 <- cbind(0,confusion_matrix1)
+
+# Remove the label on top
+rownames(confusion_matrix1) <- c("0", "1")
+
+# Label the columns
+colnames(confusion_matrix1) <- c("0", "1")
+confusion_matrix1
+
+accuracy <- mean(binary_predictions1 == combined_sessions_final$feedback)
+precision <- confusion_matrix1[2, 2] / sum(confusion_matrix1[, 2])
+recall <- confusion_matrix1[2, 2] / sum(confusion_matrix1[2, ])
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+
+
+# Create the confusion matrix table
+confusion_matrix_table <- kable(confusion_matrix1, caption = "Confusion Matrix for Logistic Regression Model")
+
+# Create the model performance metrics table
+metrics_table <- kable(data.frame(Accuracy = accuracy, Precision = precision, Recall = recall, F1_Score = f1_score), 
+                       caption = "Model Performance Metrics")
+
+# Print the kable tables
+confusion_matrix_table
+metrics_table
+
+})
+```
+
+<p style="text-align: center;">**Table 3**. The confusion matrix and model performance of Logistic Regression Model</p>
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+suppressWarnings({
+# random forest model 
+
+set.seed(3)
+model11 <- randomForest(feedback ~ X1 + X2 + X3 + X4, data = train_data, ntree = 500)
+
+
+predictions <- predict(model11, newdata = test_data)
+binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+confusion_matrix <- table(test_data$feedback, binary_predictions)
+
+
+
+accuracy <- mean(binary_predictions == combined_sessions_final$feedback)
+precision <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+recall <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+
+
+# Create the confusion matrix table
+confusion_matrix_table <- kable(confusion_matrix, caption = "Confusion Matrix for Random Forest Model")
+
+# Create the model performance metrics table
+metrics_table <- kable(data.frame(Accuracy = accuracy, Precision = precision, Recall = recall, F1_Score = f1_score), 
+                       caption = "Model Performance Metrics")
+
+# Print the kable tables
+confusion_matrix_table
+metrics_table
+
+})
+```
+<p style="text-align: center;">**Table 4**. Confusion matrix and model performance of Random Forest Model </p>
+
+
+**We will use four measurements of model performance:**
+
+i) accuracy: measures the overall correctness of the model's predictions
+ii) precision: measures the proportion of true positive predictions out of all positive predictions made by the model
+iii) recall: measures the proportion of true positive predictions out of all actual positive instances in the dataset
+iv) F1 score: the mean of precision and recall, provides a balanced measure that considers both precision and recall simultaneously
+
+To evaluate both models, I split the current dataset into a test and training dataset. Prior to receiving the official test data, it is important to evaluate the best model to use for the test data. 
+
+**Outcome**
+
+The outcome of the random forest prediction model proved to be similar to the logistic regression model. The accuracy was 69.57%, however a majority of the successful predictions came from the predicting a success trial. There were very few failure trials predicted, and this mimics the behavior of the logistic regression model. The precision, recall score, and F1 score and accuracy. The F1 score for both models is relatively high, as it it close to 1. This indicates that the precision and recall of both models is relatively good. The logistic regression model predicted zero failure trials, and the accuracy was at 71%. While the accuracy is higher for the logistic regression model, the recall proportion is 1. This means that only positive trials were predicted for the logistic regression model. In general, the prediction of only success in a model is an indication of a poor model and we want to avoid the use of it. When inspecting the variables of the logistic regression model, there is no multicollinearlity due to low VIFs. Thus, it is likely the logistic model itself that is the issue. Logistic regression assumes that the data is linear, thus the poor result could indicate that the data is not linear and the random forest model is a better fit for the data. Although the performance metrics were similar, the context of the data is important to choosing the correct model. We will use the random forest model for the test data.
+
+### Evaluating the Test Data
+
+**Prompt**
+
+We are given additional data from sessions 1 and 18, and we will now use the original dataset as the training data and the additional data from sessions 1 and 18 as the test data. This will put our prediction model into use, and we will evaulate the effectiveness of the model. 
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+suppressWarnings({
+test_final_data <- function(test, number) {
+session_1_predict <- data.frame()
+  for (i in 1:length(test$feedback_type)) {
+    trial_1_session <- data.frame(cbind(data.frame(test$spks[i]), converted_vectors[[number]]))
+    labels <- trial_1_session[, 41]
+    averages <- aggregate(trial_1_session, by = list(Label = labels), FUN = mean)
+    session_1_predict <- rbind(session_1_predict, averages)
+  }
+
+# Output the averages
+  clustered_sum_column <- data.frame(rowSums(session_1_predict[,2:41]))
+  clustered_sum_column <- cbind(clustered_sum_column[,1], session_1_predict[,1])
+  data_clustered <- data.frame(clustered_sum_column)
+
+
+# Create an empty matrix with dimensions n x 3
+  labels_list_1 <- as.numeric(unique(labels))
+  vector <- sort(labels_list_1)
+  result_matrix <- matrix(0, nrow = length(test$feedback_type), ncol = length(vector))
+
+  j = 1
+# Iterate over the conditions using a for loop
+  for (i in vector) {
+  
+  # Subset the values from data_clustered$X1 based on the condition
+    subset_values <- data_clustered$X1[data_clustered$X2 == i]
+  
+  # Assign the subset values to the corresponding column in result_matrix
+    result_matrix[, j] <- subset_values
+    j = j + 1
+  }
+  data.frame.s <- data.frame(result_matrix)
+  colnames(data.frame.s) <- vector
+  data.frame.s <- data.frame(lapply(data.frame.s, as.numeric))
+  return(data.frame.s)
+}
+  
+
+# for session 2
+n.trial=length(test1$feedback_type)
+n.area=length(unique(test1$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.1 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.1[i.t,]=c(average_spike_area(i.t,test1),
+                          test1$feedback_type[i.t],
+                        test1$contrast_left[i.t],
+                        test1$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.1)=c(names(average_spike_area(i.t,test1)), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.1 <- as_tibble(trial.1)
+feedback = trial.1$feedback
+trial.1$feedback[trial.1$feedback == -1] <- 0
+trial.1
+
+
+# test data 2
+
+n.trial=length(test2$feedback_type)
+n.area=length(unique(test2$brain_area ))
+# Alternatively, you can extract these information in the meta that I created before.
+
+# I will create a data frame that contain the average spike counts for each area, feedback type,  the two contrasts, and the trial id
+
+trial.2 =matrix(nrow=n.trial,ncol= n.area+1+2+1)
+for(i.t in 1:n.trial){
+  trial.2[i.t,]=c(average_spike_area(i.t,test2),
+                          test2$feedback_type[i.t],
+                        test2$contrast_left[i.t],
+                        test2$contrast_right[i.s],
+                        i.t)
+}
+
+colnames(trial.2)=c(names(average_spike_area(i.t,test2)), 'feedback', 'left contr.','right contr.','id' )
+
+# Turning it into a data frame
+# description: data table with average spike count 
+trial.2 <- as_tibble(trial.2)
+feedback = trial.2$feedback
+trial.2$feedback[trial.2$feedback == -1] <- 0
+trial.2
+
+
+test_1 <- test_final_data(test1, 1)
+test_2 <- test_final_data(test2, 18)
+  
+test_1 <- data.frame(cbind(test_1[,1:2], 0, test_1[, 3]))
+test_2 <- data.frame(cbind(test_2[,1:2], 0, test_2[, 3]))
+
+test_1 <- cbind(test_1, trial.1[,9:12])
+test_2 <- cbind(test_2, trial.2[,11:14])
+
+colnames(test_1)[1:4] <- c("X1", "X2", "X3", "X4")
+colnames(test_2)[1:4] <- c("X1", "X2", "X3", "X4")
+
+test_1
+test_2
+
+final_test <- rbind(test_1, test_2)
+})
+```
+
+
+```{r echo = FALSE, message=FALSE, warning=FALSE}
+suppressWarnings({
+
+set.seed(1)
+ model22 <- randomForest(feedback ~ X1 + X2 + X4, data = combined_sessions_final, ntree = 500)
+
+predictions <- predict(model22, newdata = final_test)
+binary_predictions <- ifelse(predictions > 0.5, 1, 0)
+confusion_matrix <- table(final_test$feedback, binary_predictions)
+
+accuracy <- mean(binary_predictions == final_test$feedback)
+precision <- confusion_matrix[2, 2] / sum(confusion_matrix[, 2])
+recall <- confusion_matrix[2, 2] / sum(confusion_matrix[2, ])
+f1_score <- 2 * (precision * recall) / (precision + recall)
+
+
+# Create kable tables for confusion matrix and performance metrics
+confusion_matrix_table <- kable(confusion_matrix, caption = "Confusion Matrix for Test Data using Random Forest Model")
+metrics_table <- kable(data.frame(Accuracy = accuracy, Precision = precision, Recall = recall, F1_Score = f1_score), 
+                       caption = "Model Performance Metrics")
+
+# Print the kable tables
+(confusion_matrix_table)
+(metrics_table)
+
+})
+```
+<p style="text-align: center;">**Table 5**. The confusion matrix and model performance of Random Forest Model on Test Data </p>
+
+
+**Result**
+
+When clustering the test data, the clusters indicate that the third cluster is not relevant because the brain areas in sessions 1 and 18 are only classified into three out of the 4 clusters. Initially, when I fit the model to fit four clusters, the random forest model only predicted success trials. This is a failed model and I inspected the elements to better the mdoel. Thus, to better predict the feedback type of the test data, I removed the third cluster as a predictor variable for the random forest model. This resulted in an accuracy of 75%, which is a high value. The confusion matrix shows some failure trials being predicted, thus removing the third cluster improved the performance of the model and the recall proportion is not 1. The precision, recall and F1 score are all relatively high, meaning the model minimizes false positive and false negatives. 
+
+
+## Discussion and Application
+
+
+**Discussion**
+
+While the results did not determine the causation of mouse behavior from specific neuron activity, I found a correlation between the overall neuron activity and the action selection of the four mice in the experiment. When inspecting the brain areas for each session, the correlation between brain area and feedback type was small, however when combining the sessions, the correlation increased. A main goal for this report was to inspect the dimensionality of the original dataset and effectively reduce the dimensions without taking away too many important features. This was done through k-means clustering and the the resulting clusters of the original dataset were fit into a random forest model. I successfully built a prediction model with a prediction accuracy of 75%, using the key features of the dataset. Readers will better understand the relationships between the several variables in the dataset as a result, and the relationships between global neuron activity and action selection. In the future, I aim to inspect other models that can better capture the features of neuron activity, as well as studying the applications of this experiment in neuroscience.  
+
+**Application to Neurodevelopmental Disorders**
+
+Autism, also known as Autism Spectrum Disorder (ASD), is a neurodevelopmental disorder that affects social interaction, communication, and behavior. It is characterized by a wide range of symptoms, thus being a spectrum, which vary in severity among different individuals. Autism is typically diagnosed in early childhood, and attention to the disorder has been increasing over the years. As a result, scientific studies on ASD have increased over the years and have aimed to discover more about the effects of ASD on the brain. 
+
+Neuron activity is abnormal for individuals with ASD. Studies have shown that individuals with autism have an imbalance of inhibition and excitation of the brain's neurons. This imbalance can result in either insufficient inhibition or excessive excitation, leading to high amounts of neuron activity. The excessive spiking acts as disruptive noise, interfering with the normal functioning of the brain. This noise is believed to contribute to the main characteristics of autism, including difficulties with social interactions, repetitive thoughts and behaviors, and heightened sensitivity to sensory stimuli. [(Sanders, 2019)](https://vcresearch.berkeley.edu/news/mouse-studies-question-inhibition-theory-autism) 
+
+Studies of the brain in mice without neurodevelopmental disorders can be treated as a benchmark to mice with disorders such as ASD. By exploring the resulting activity of mice who have ASD, we can compare the neuron spikes of those mice to the benchmark results and see the differences between the two. This will help us better understand the causes of ASD symptoms, and can potentially lead to solutions to improving those symptoms. 
+
+
+*** 
+## Acknowledgements 
+
+A thank you to Dr. Chen and his guidance on this project. I used ChatGPT for for assistance with my code as well. 
+
+***
+## Reference 
+
+Berry, Michael J. II, and Gašper Tkačik. “Clustering of Neural Activity: A Design Principle for Population Codes.” Frontiers, 18 Feb. 2020, www.frontiersin.org/articles/10.3389/fncom.2020.00020/full. 
+
+Caruso, Catherine. “Study Confirms Why We Need Female Mice in Neuroscience Research.” Harvard Gazette, 8 Mar. 2023, news.harvard.edu/gazette/story/2023/03/study-confirms-why-we-need-female-mice-in-neuroscience-research/#:~:text=This%20is%20because%20mouse%20and,build%20models%20of%20human%20diseases. 
+
+Sanders, By: Robert. “Mouse Studies Question ‘inhibition’ Theory of Autism.” Mouse Studies Question “inhibition” Theory of Autism | Research UC Berkeley, 21 Jan. 2019, vcresearch.berkeley.edu/news/mouse-studies-question-inhibition-theory-autism. 
+
+Steinmetz, Nicholas A., et al. “Distributed Coding of Choice, Action and Engagement across the Mouse Brain.” Nature News, 27 Nov. 2019, www.nature.com/articles/s41586-019-1787-x#Sec7. 
+
+University of California, Irvine, sites.socsci.uci.edu/~jkrichma/ABADV/mouseontology.html. Accessed 12 June 2023. 
+
+***
+
+## Session info 
+
+
+```{r}
+sessionInfo()
+```
+
+*** 
+
+## Appendix
+
+\begin{center} Appendix: R Script \end{center}
+
+```{r, ref.label=knitr::all_labels(),echo=TRUE,eval=FALSE}
+```
+
+
+
+
