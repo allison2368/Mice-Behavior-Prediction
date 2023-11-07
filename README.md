@@ -9,4 +9,4 @@ This repository contains:
     
     - Dataset used to test the model, 2 sessions
     
-To access the html file, click on the link and it should open in browser
+To access the html file, please download the .html file to view
