@@ -1,5 +1,5 @@
 # Mice Behavior Prediction Project
-# Website link: https://allison2368.github.io/mice_behavior/ 
+# Published Site: https://allison2368.github.io/mice_behavior/ 
 This repository contains:
     
     - html file of final project report
